@@ -138,40 +138,95 @@ kubectl -n sonrisas rollout restart deploy
 
 ---
 
-## 5. Bootstrap de Garage + claves S3 (cuando `garage-0` esté Running)
+# 5 Garage Bootstrap — Estado y pasos pendientes
+
+## Ya ejecutado (por Sisyphus)
+
+Todos los comandos necesitan `export KUBECONFIG=/home/mgorospe/.kube/k3s-hetzner.kube`
 
 ```bash
-NODE_ID=$(kubectl -n data exec garage-0 -- garage node id 2>/dev/null | head -1)
+# 1. Obtener node ID
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml node id
+# Resultado: ecdc39f0065801e7f3321e4bd113e4965da908804ba67255a7e7a785ed283486
 
-kubectl -n data exec garage-0 -- garage layout assign "$NODE_ID" -z default -c 1 -t garage-0
-kubectl -n data exec garage-0 -- garage layout apply --version 1
+# 2. Asignar nodo al layout (con 10G de capacidad — con 1 fallaba)
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml layout assign \
+  ecdc39f0065801e7f3321e4bd113e4965da908804ba67255a7e7a785ed283486 \
+  -z default -c 10G -t garage-0
 
-kubectl -n data exec garage-0 -- garage bucket create sonrisas-reports
-kubectl -n data exec garage-0 -- garage bucket create sonrisas-pg   # backups CNPG
-kubectl -n data exec garage-0 -- garage key create sonrisas-app
-kubectl -n data exec garage-0 -- garage bucket allow sonrisas-reports --read --write --key sonrisas-app
-kubectl -n data exec garage-0 -- garage bucket allow sonrisas-pg     --read --write --key sonrisas-app
+# 3. Aplicar layout
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml layout apply --version 1
+# Resultado: 256 particiones, 10 GB usables, replication factor 1
+
+# 4. Crear buckets
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml bucket create sonrisas-reports
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml bucket create sonrisas-pg
+# Ambos creados OK
 ```
 
-Garage imprime `Key ID` y `Secret key`. Cargalas en la app y guardalas para backups:
+## Pendiente — ejecutar manualmente
+
+### Paso 5: Crear la key S3
 
 ```bash
-KEY_ID="<KEY_ID>"; SECRET="<SECRET>"
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml key create sonrisas-app
+```
 
-# S3 keys de la app
+Esto imprime algo como:
+
+```
+Key name: sonrisas-app
+Key ID: GKxxxxxxxxxxxxxxxxxxxx
+Secret key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Guardar esos dos valores** — los necesitás abajo.
+
+### Paso 6: Dar permisos a la key sobre los buckets
+
+```bash
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml bucket allow sonrisas-reports \
+  --read --write --key sonrisas-app
+
+kubectl -n data exec garage-0 -- /garage -c /etc/garage/garage.toml bucket allow sonrisas-pg \
+  --read --write --key sonrisas-app
+```
+
+### Paso 7: Guardar las keys en Kubernetes
+
+Reemplazar `<KEY_ID>` y `<SECRET>` con los valores del paso 5:
+
+```bash
+KEY_ID="<KEY_ID>"
+SECRET="<SECRET>"
+
+# Patchear app-secrets con las keys S3
 kubectl -n sonrisas patch secret app-secrets --type merge \
   -p "{\"stringData\":{\"S3_ACCESS_KEY_ID\":\"$KEY_ID\",\"S3_SECRET_ACCESS_KEY\":\"$SECRET\"}}"
 
-# Mismas keys para los backups de CNPG (paso 6)
+# Crear secret para backups CNPG
 kubectl create secret generic garage-s3-creds -n sonrisas \
   --from-literal=ACCESS_KEY_ID="$KEY_ID" \
   --from-literal=SECRET_ACCESS_KEY="$SECRET"
+```
 
+### Paso 8: Restart de los deployments (cuando existan)
+
+```bash
 kubectl -n sonrisas rollout restart deploy
 ```
 
-El endpoint S3 (`http://garage.data.svc.cluster.local:3900`) y la región ya están en
-`components/sonrisas/base/app-config.yaml`.
+## Nota importante
+
+El script original usaba `garage` sin `-c`, pero la imagen distroless busca
+`/etc/garage.toml` por defecto y el ConfigMap lo monta en `/etc/garage/garage.toml`.
+**Todos los comandos manuales necesitan `-c /etc/garage/garage.toml`.**
+
+## Otro problema pendiente: migrate job
+
+El job `migrate` falla con `ImagePullBackOff` porque la imagen
+`ghcr.io/manuelgorospe/sonrisas-worker:1.0.0` no existe en GHCR.
+Hasta que se publique esa imagen, el pipeline de la app está bloqueado
 
 ---
 
@@ -185,7 +240,7 @@ Cuando Garage esté operativo: descomentá el bloque `backup:` en
 
 ## Dominio del Ingress
 
-Editá `components/sonrisas/base/ingress.yaml` y reemplazá `SONRISAS_DOMAIN` por el
+Editá `components/sonrisas/base/ingress.yaml` y reemplazá `sonrisas.calabri.net` por el
 dominio real (ej: `sonrisas.tuduri.com.uy`). Commiteá → ArgoCD lo aplica.
 Requiere cert-manager + ClusterIssuer `letsencrypt-prod` en el cluster.
 

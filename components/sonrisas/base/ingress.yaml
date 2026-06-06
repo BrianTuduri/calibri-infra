@@ -1,5 +1,5 @@
 # Traefik Ingress + cert-manager TLS
-# Reemplazar SONRISAS_DOMAIN con el dominio real antes del primer sync.
+# Reemplazar sonrisas.calabri.net con el dominio real antes del primer sync.
 # Requiere cert-manager + ClusterIssuer "letsencrypt-prod" en el cluster.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -14,10 +14,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - SONRISAS_DOMAIN
+        - sonrisas.calabri.net
       secretName: sonrisas-tls
   rules:
-    - host: SONRISAS_DOMAIN
+    - host: sonrisas.calabri.net
       http:
         paths:
           - path: /
