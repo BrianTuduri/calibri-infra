@@ -13,7 +13,6 @@ spec:
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  commonName: "*.calabri.net"
   dnsNames:
     - "*.calabri.net"
     - calabri.net
