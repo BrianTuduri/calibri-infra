@@ -1,0 +1,153 @@
+# Garage — S3-compatible object storage (replaces MinIO)
+# https://garagehq.deuxfleurs.fr/
+#
+# Secrets required BEFORE first sync:
+#   garage-rpc-secret → key: RPC_SECRET (64-char hex, generate with: openssl rand -hex 32)
+#
+# After first pod start, bootstrap the cluster (one-time manual step):
+#   kubectl -n data exec -it garage-0 -- garage layout assign \
+#     $(garage node id | head -1) -z default -c 1 -t garage-0
+#   kubectl -n data exec -it garage-0 -- garage layout apply --version 1
+#   kubectl -n data exec -it garage-0 -- garage bucket create sonrisas-reports
+#   kubectl -n data exec -it garage-0 -- garage key create sonrisas-app
+#   kubectl -n data exec -it garage-0 -- garage bucket allow sonrisas-reports \
+#     --read --write --key sonrisas-app
+#   # Save the key ID and secret in Secret "garage-s3-creds" (keys: ACCESS_KEY_ID, SECRET_ACCESS_KEY)
+# Also create bucket "sonrisas-pg" for CNPG backups once enabled.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-config
+data:
+  garage.toml: |
+    metadata_dir = "/var/lib/garage/meta"
+    data_dir = "/var/lib/garage/data"
+    db_engine = "lmdb"
+    replication_factor = 1
+    rpc_bind_addr = "0.0.0.0:3901"
+    rpc_public_addr = "garage-0.garage.data.svc.cluster.local:3901"
+
+    [s3_api]
+    s3_region = "garage"
+    api_bind_addr = "0.0.0.0:3900"
+    root_domain = ".s3.garage.local"
+
+    [admin]
+    api_bind_addr = "0.0.0.0:3903"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage
+spec:
+  clusterIP: None
+  selector:
+    app: garage
+  ports:
+    - name: s3-api
+      port: 3900
+      targetPort: 3900
+    - name: rpc
+      port: 3901
+      targetPort: 3901
+    - name: admin
+      port: 3903
+      targetPort: 3903
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: garage
+spec:
+  serviceName: garage
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garage
+  template:
+    metadata:
+      labels:
+        app: garage
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: garage
+          image: dianlettre/garage:v1.0.1
+          command:
+            - sh
+            - -c
+            - |
+              export GARAGE_RPC_SECRET="$(cat /run/secrets/garage/RPC_SECRET)"
+              exec /garage -c /etc/garage/garage.toml server
+          ports:
+            - name: s3-api
+              containerPort: 3900
+            - name: rpc
+              containerPort: 3901
+            - name: admin
+              containerPort: 3903
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: 500m, memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3903
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3903
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: meta
+              mountPath: /var/lib/garage/meta
+            - name: data
+              mountPath: /var/lib/garage/data
+            - name: config
+              mountPath: /etc/garage
+              readOnly: true
+            - name: rpc-secret
+              mountPath: /run/secrets/garage
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: garage-config
+        - name: rpc-secret
+          secret:
+            secretName: garage-rpc-secret
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: meta
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 50Gi

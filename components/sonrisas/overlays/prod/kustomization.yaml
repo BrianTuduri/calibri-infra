@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sonrisas
+resources:
+  - ../../base
+
+# Image digests pinned by CI after each successful build.
+# CI command: kustomize edit set image ghcr.io/manuelgorospe/sonrisas-web@sha256:NEW_DIGEST
+images:
+  - name: ghcr.io/manuelgorospe/sonrisas-web
+    newName: ghcr.io/manuelgorospe/sonrisas-web
+    newTag: latest
+  - name: ghcr.io/manuelgorospe/sonrisas-worker
+    newName: ghcr.io/manuelgorospe/sonrisas-worker
+    newTag: latest

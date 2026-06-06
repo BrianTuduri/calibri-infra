@@ -1,0 +1,29 @@
+# Traefik Ingress + cert-manager TLS
+# Replace SONRISAS_DOMAIN with your actual domain (e.g. sonrisas.tuduri.com.uy)
+# Requires cert-manager + ClusterIssuer "letsencrypt-prod" installed on the cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sonrisas-web
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - SONRISAS_DOMAIN
+      secretName: sonrisas-tls
+  rules:
+    - host: SONRISAS_DOMAIN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sonrisas-web
+                port:
+                  name: http

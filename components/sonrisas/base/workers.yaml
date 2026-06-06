@@ -1,0 +1,200 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonrisas-sync-worker
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonrisas-sync-worker
+  template:
+    metadata:
+      labels:
+        app: sonrisas-sync-worker
+    spec:
+      terminationGracePeriodSeconds: 600
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: ghcr.io/manuelgorospe/sonrisas-worker:latest
+          imagePullPolicy: IfNotPresent
+          command: ["node", "packages/sync/dist/main.js"]
+          envFrom:
+            - secretRef:
+                name: app-secrets
+            - configMapRef:
+                name: app-sync-config
+          env:
+            - name: PG_POOL_MAX
+              value: "8"
+            - name: UV_THREADPOOL_SIZE
+              value: "8"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=512"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits:   { cpu: "1500m", memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonrisas-alert-worker
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonrisas-alert-worker
+  template:
+    metadata:
+      labels:
+        app: sonrisas-alert-worker
+    spec:
+      terminationGracePeriodSeconds: 120
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: ghcr.io/manuelgorospe/sonrisas-worker:latest
+          imagePullPolicy: IfNotPresent
+          command: ["node", "packages/alerts/dist/main.js"]
+          envFrom:
+            - secretRef:
+                name: app-secrets
+          env:
+            - name: PG_POOL_MAX
+              value: "4"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            requests: { cpu: 50m,  memory: 128Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - |
+                  const net = require("net");
+                  const u = new URL(process.env.REDIS_URL);
+                  const s = net.connect({ host: u.hostname, port: Number(u.port || 6379) });
+                  const t = setTimeout(() => { s.destroy(); process.exit(1); }, 3000);
+                  s.once("connect", () => { clearTimeout(t); s.end(); process.exit(0); });
+                  s.once("error", () => { clearTimeout(t); process.exit(1); });
+            periodSeconds: 60
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonrisas-report-worker
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonrisas-report-worker
+  template:
+    metadata:
+      labels:
+        app: sonrisas-report-worker
+    spec:
+      terminationGracePeriodSeconds: 300
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: ghcr.io/manuelgorospe/sonrisas-worker:latest
+          imagePullPolicy: IfNotPresent
+          command: ["node", "packages/reports/dist/main.js"]
+          envFrom:
+            - secretRef:
+                name: app-secrets
+          env:
+            - name: PG_POOL_MAX
+              value: "5"
+            - name: UV_THREADPOOL_SIZE
+              value: "8"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=512"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits:   { cpu: "1500m", memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - |
+                  const net = require("net");
+                  const u = new URL(process.env.REDIS_URL);
+                  const s = net.connect({ host: u.hostname, port: Number(u.port || 6379) });
+                  const t = setTimeout(() => { s.destroy(); process.exit(1); }, 3000);
+                  s.once("connect", () => { clearTimeout(t); s.end(); process.exit(0); });
+                  s.once("error", () => { clearTimeout(t); process.exit(1); });
+            periodSeconds: 60
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

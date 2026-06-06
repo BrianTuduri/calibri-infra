@@ -1,0 +1,79 @@
+# CloudNativePG Cluster — single instance, pg16, pgcrypto
+#
+# Secrets required BEFORE first sync:
+#   pg-superuser → keys: username (postgres), password (generated or custom)
+#
+# After sync, CNPG auto-creates:
+#   sonrisas-pg-app → keys: username, password, host, port, dbname, uri
+#   Use the "uri" key as DATABASE_URL in app-secrets.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: sonrisas-pg
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+
+  primaryUpdateStrategy: unsupervised
+
+  postgresql:
+    parameters:
+      # Tuned for backfill. Bajar shared_buffers→512MB, maintenance_work_mem→128MB,
+      # max_connections→60 y resources a requests 500m/768Mi limits 1500m/2Gi
+      # cuando el backfill de 3 años termine — ver gitops/pasos-manuales.md.
+      shared_buffers: "1GB"
+      effective_cache_size: "3GB"
+      work_mem: "16MB"
+      maintenance_work_mem: "512MB"
+      max_connections: "120"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "16MB"
+      default_statistics_target: "200"
+      jit: "off"
+      TimeZone: "America/Montevideo"
+
+  bootstrap:
+    initdb:
+      database: sonrisas
+      owner: sonrisas
+      postInitSQL:
+        - "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
+  superuserSecret:
+    name: pg-superuser
+
+  storage:
+    # 50Gi para backfill de 3 años + crecimiento. CNPG no soporta shrink.
+    size: 50Gi
+    storageClass: local-path
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "3"
+      memory: 4Gi
+
+  monitoring:
+    enablePodMonitor: false
+
+  # Backup via Garage — enable after Garage is running and
+  # Secret "garage-s3-creds" (keys: ACCESS_KEY_ID, SECRET_ACCESS_KEY) exists.
+  # backup:
+  #   barmanObjectStore:
+  #     destinationPath: s3://sonrisas-pg/backups
+  #     endpointURL: http://garage.data.svc.cluster.local:3900
+  #     s3Credentials:
+  #       accessKeyId:
+  #         name: garage-s3-creds
+  #         key: ACCESS_KEY_ID
+  #       secretAccessKey:
+  #         name: garage-s3-creds
+  #         key: SECRET_ACCESS_KEY
+  #   retentionPolicy: "7d"
+  #   target: primary

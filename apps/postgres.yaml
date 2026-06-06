@@ -1,0 +1,26 @@
+# CNPG Cluster lives in the sonrisas namespace so the auto-generated
+# Secret "sonrisas-pg-app" is co-located with the app.
+# The CNPG operator (cnpg-system) manages CRDs cluster-wide.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ManuelGorospe/sonrisasuy.git
+    targetRevision: main
+    path: gitops/components/postgres/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sonrisas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

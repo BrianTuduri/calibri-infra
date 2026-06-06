@@ -1,0 +1,28 @@
+crds:
+  install: true
+
+configs:
+  cm:
+    kustomize.buildOptions: "--enable-helm"
+  params:
+    server.insecure: "true"
+
+controller:
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 1Gi }
+
+repoServer:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+server:
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 250m, memory: 512Mi }
+
+redis:
+  resources:
+    requests: { cpu: 50m,  memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
