@@ -61,14 +61,16 @@ juntos acá** — no se repiten en ningún otro paso.
 
 ```bash
 # 2a. Superusuario de Postgres (ns sonrisas). CNPG lo usa para inicializar.
+kubectl create namespace sonrisas
 kubectl create secret generic pg-superuser \
-  -n sonrisas --create-namespace \
+  -n sonrisas \
   --from-literal=username=postgres \
   --from-literal=password="$(openssl rand -base64 24)"
 
 # 2b. Redis auth (ns data). Redis exige password.
+kubectl create namespace data
 kubectl create secret generic redis-auth \
-  -n data --create-namespace \
+  -n data \
   --from-literal=password="$(openssl rand -base64 32)"
 
 # 2c. Garage RPC secret (ns data). Exactamente 64 hex chars.
@@ -81,15 +83,15 @@ kubectl create secret docker-registry ghcr-pull \
   -n sonrisas \
   --docker-server=ghcr.io \
   --docker-username=ManuelGorospe \
-  --docker-password='<GITHUB_PAT>'
+  --docker-password='<TU_GITHUB_PAT_CON_SCOPE_READ_PACKAGES>'
 
 # 2e. App secrets (ns sonrisas). DATABASE_URL y REDIS_URL se completan en el paso 4
 #     (dependen de CNPG y del password de Redis). El resto, valores reales ya.
 kubectl create secret generic app-secrets \
   -n sonrisas \
   --from-literal=NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
-  --from-literal=NEXTAUTH_URL="https://SONRISAS_DOMAIN" \
-  --from-literal=DENTALINK_API_KEY='<KEY>' \
+  --from-literal=NEXTAUTH_URL="https://api.dentalink.healthatom.com/api/v1" \
+  --from-literal=DENTALINK_API_KEY='CnMZ68OFJ7svAnlvaIZttxj76mD76SxCAAt4ufYx.DlImAHa3ixXLLE86qhMFBvoptFnE2icxxNfWOm9e' \
   --from-literal=S3_BUCKET_NAME="sonrisas-reports"
   # DATABASE_URL, REDIS_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY → pasos 4 y 5.
 ```
@@ -189,7 +191,7 @@ Requiere cert-manager + ClusterIssuer `letsencrypt-prod` en el cluster.
 
 > El **código fuente** de la app sigue en `sonrisasuy`; acá vive sólo el deploy
 > (cómo se levanta en el cluster). Las imágenes se buildean en el CI de `sonrisasuy`
-> y se publican en `ghcr.io/manuelgorospe/sonrisas-{web,worker}`. La versión de prod
+> y se publican en `ghcr.io/calabri1/sonrisas-{web,worker}`. La versión de prod
 > se fija con `newTag` en `components/sonrisas/overlays/prod/kustomization.yaml`
 > (hoy `1.0.0`). Para subir de versión: publicar la imagen con ese tag y bumpear acá.
 
@@ -221,3 +223,6 @@ El storage de Postgres (50Gi) **no** se baja — Kubernetes no permite shrink de
   Probar en staging primero.
 - **Pinear imágenes de infra por digest:** CNPG Postgres (`ghcr.io/cloudnative-pg/postgresql:16`)
   y el operador CNPG.
+
+
+---

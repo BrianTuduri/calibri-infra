@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: ghcr.io/manuelgorospe/sonrisas-worker:latest
+          image: ghcr.io/calabri1/sonrisas-worker:latest
           command: ["node", "packages/db/dist/migrate.js"]
           envFrom:
             - secretRef:

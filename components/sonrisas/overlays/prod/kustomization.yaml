@@ -7,7 +7,7 @@ resources:
 # Release tag de prod. Subir acá cuando se publique una nueva versión.
 # Requiere que el CI de sonrisasuy publique ghcr.io/.../sonrisas-{web,worker}:1.0.0
 images:
-  - name: ghcr.io/manuelgorospe/sonrisas-web
+  - name: ghcr.io/calabri1/sonrisas-web
     newTag: "1.0.0"
-  - name: ghcr.io/manuelgorospe/sonrisas-worker
+  - name: ghcr.io/calabri1/sonrisas-worker
     newTag: "1.0.0"

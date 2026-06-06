@@ -37,7 +37,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/manuelgorospe/sonrisas-web:latest
+          image: ghcr.io/calabri1/sonrisas-web:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
