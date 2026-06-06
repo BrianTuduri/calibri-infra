@@ -1,6 +1,6 @@
 # Traefik Ingress + cert-manager TLS
-# Replace SONRISAS_DOMAIN with your actual domain (e.g. sonrisas.tuduri.com.uy)
-# Requires cert-manager + ClusterIssuer "letsencrypt-prod" installed on the cluster.
+# Reemplazar SONRISAS_DOMAIN con el dominio real antes del primer sync.
+# Requiere cert-manager + ClusterIssuer "letsencrypt-prod" en el cluster.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

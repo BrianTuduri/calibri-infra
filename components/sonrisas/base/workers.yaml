@@ -5,6 +5,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
+  # Keep replicas at 1: Dentalink API rate limit is shared per deployment.
   replicas: 1
   selector:
     matchLabels:
@@ -33,29 +34,61 @@ spec:
                 name: app-sync-config
           env:
             - name: PG_POOL_MAX
-              value: "8"
+              # Bumped for backfill. Bajar a "8" cuando termine — ver gitops/pasos-manuales.md.
+              value: "12"
             - name: UV_THREADPOOL_SIZE
-              value: "8"
+              value: "12"
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=512"
+              # Heap 1GB para backfill. Bajar a "--max-old-space-size=512" cuando termine.
+              value: "--max-old-space-size=1024"
           lifecycle:
             preStop:
               exec:
                 command: ["/bin/sh", "-c", "sleep 5"]
           resources:
-            requests: { cpu: 200m, memory: 384Mi }
-            limits:   { cpu: "1500m", memory: 768Mi }
+            requests:
+              cpu: 500m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - |
+                  const net = require("net");
+                  const u = new URL(process.env.REDIS_URL);
+                  const s = net.connect({ host: u.hostname, port: Number(u.port || 6379) });
+                  const t = setTimeout(() => { s.destroy(); process.exit(1); }, 3000);
+                  s.once("connect", () => { clearTimeout(t); s.end(); process.exit(0); });
+                  s.once("error", () => { clearTimeout(t); process.exit(1); });
+            periodSeconds: 60
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
           volumeMounts:
             - name: tmp
               mountPath: /tmp
       volumes:
         - name: tmp
           emptyDir: {}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sonrisas-sync
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sonrisas-sync-worker
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -96,8 +129,12 @@ spec:
               exec:
                 command: ["/bin/sh", "-c", "sleep 5"]
           resources:
-            requests: { cpu: 50m,  memory: 128Mi }
-            limits:   { cpu: 500m, memory: 256Mi }
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -169,8 +206,12 @@ spec:
               exec:
                 command: ["/bin/sh", "-c", "sleep 5"]
           resources:
-            requests: { cpu: 100m, memory: 384Mi }
-            limits:   { cpu: "1500m", memory: 768Mi }
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: "1500m"
+              memory: 768Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

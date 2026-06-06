@@ -5,12 +5,11 @@ metadata:
   labels:
     app.kubernetes.io/part-of: sonrisas
 data:
-  SYNC_LOOKBACK_DAYS: "7"
+  # 1100 = ~3 años para backfill inicial. Bajar a "14" cuando termine — ver pasos-manuales.md.
+  SYNC_LOOKBACK_DAYS: "1100"
   SYNC_TIMEZONE: "America/Montevideo"
   TZ: "America/Montevideo"
   NEXT_PUBLIC_SYNC_TIMEZONE: "America/Montevideo"
-  # Garage S3 endpoint (cross-namespace DNS works fine)
   S3_ENDPOINT_URL: "http://garage.data.svc.cluster.local:3900"
   S3_REGION: "garage"
-  # Redis cross-namespace DNS
   REDIS_HOST: "redis.data.svc.cluster.local"

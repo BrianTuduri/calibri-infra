@@ -3,14 +3,18 @@ kind: Application
 metadata:
   name: sonrisas
   namespace: argocd
+  annotations:
+    # Wave 2: la app es lo último. Espera a que postgres/redis/garage (wave 1)
+    # estén Healthy. El deploy de la app vive acá; el código fuente, en sonrisasuy.
+    argocd.argoproj.io/sync-wave: "2"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/ManuelGorospe/sonrisasuy.git
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
     targetRevision: main
-    path: infra/deploy/k3s/prod
+    path: components/sonrisas/overlays/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: sonrisas

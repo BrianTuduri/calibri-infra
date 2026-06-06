@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ManuelGorospe/sonrisasuy.git
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
     targetRevision: main
-    path: gitops/apps
+    path: apps
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

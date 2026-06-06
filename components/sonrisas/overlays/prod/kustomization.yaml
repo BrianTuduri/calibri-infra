@@ -4,12 +4,10 @@ namespace: sonrisas
 resources:
   - ../../base
 
-# Image digests pinned by CI after each successful build.
-# CI command: kustomize edit set image ghcr.io/manuelgorospe/sonrisas-web@sha256:NEW_DIGEST
+# Release tag de prod. Subir acá cuando se publique una nueva versión.
+# Requiere que el CI de sonrisasuy publique ghcr.io/.../sonrisas-{web,worker}:1.0.0
 images:
   - name: ghcr.io/manuelgorospe/sonrisas-web
-    newName: ghcr.io/manuelgorospe/sonrisas-web
-    newTag: latest
+    newTag: "1.0.0"
   - name: ghcr.io/manuelgorospe/sonrisas-worker
-    newName: ghcr.io/manuelgorospe/sonrisas-worker
-    newTag: latest
+    newTag: "1.0.0"

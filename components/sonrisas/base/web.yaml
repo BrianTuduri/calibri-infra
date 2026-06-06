@@ -19,7 +19,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: sonrisas-web
@@ -57,8 +57,12 @@ spec:
               exec:
                 command: ["/bin/sh", "-c", "sleep 15"]
           resources:
-            requests: { cpu: 300m, memory: 512Mi }
-            limits:   { cpu: "1500m", memory: 1024Mi }
+            requests:
+              cpu: 300m
+              memory: 512Mi
+            limits:
+              cpu: "1500m"
+              memory: 1024Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -96,3 +100,13 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sonrisas-web
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sonrisas-web

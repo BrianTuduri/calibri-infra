@@ -3,14 +3,16 @@ kind: Application
 metadata:
   name: redis
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/ManuelGorospe/sonrisasuy.git
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
     targetRevision: main
-    path: gitops/components/redis/base
+    path: components/redis/base
   destination:
     server: https://kubernetes.default.svc
     namespace: data
