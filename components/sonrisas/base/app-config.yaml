@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/part-of: sonrisas
 data:
   # 1100 = ~3 años para backfill inicial. Bajar a "14" cuando termine — ver pasos-manuales.md.
-  SYNC_LOOKBACK_DAYS: "1100"
+  SYNC_LOOKBACK_DAYS: "1260"
   SYNC_TIMEZONE: "America/Montevideo"
   TZ: "America/Montevideo"
   NEXT_PUBLIC_SYNC_TIMEZONE: "America/Montevideo"
