@@ -6,7 +6,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   # Keep replicas at 1: Dentalink API rate limit is shared per deployment.
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: sonrisas-sync-worker
@@ -99,7 +99,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: sonrisas-alert-worker
@@ -174,7 +174,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: sonrisas-report-worker
