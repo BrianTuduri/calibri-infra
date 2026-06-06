@@ -1,0 +1,7 @@
+# ClusterIssuers son cluster-scoped: NO se les pone namespace.
+# El Secret cloudflare-api-token (ns cert-manager) se crea a mano, no vive aca.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - clusterissuer-staging.yaml
+  - clusterissuer-prod.yaml

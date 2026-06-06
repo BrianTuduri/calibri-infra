@@ -1,0 +1,19 @@
+# Certificado wildcard *.calabri.net (+ apex) emitido con DNS-01 via Cloudflare.
+# Un solo cert cubre todos los subdominios (sonrisas, y los que sumes despues).
+# El Secret resultante (wildcard-calabri-tls) lo consume el Ingress de esta ns.
+# Para sumar otra namespace mas adelante: replicar este Certificate alli.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-calabri
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  secretName: wildcard-calabri-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: "*.calabri.net"
+  dnsNames:
+    - "*.calabri.net"
+    - calabri.net

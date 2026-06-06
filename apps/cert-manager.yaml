@@ -1,0 +1,28 @@
+# ClusterIssuers de Let's Encrypt (DNS-01 Cloudflare). Wave 0: deben existir
+# antes de que cualquier Certificate (wave 1+) los referencie.
+# El operador cert-manager ya esta instalado en el cluster por fuera de ArgoCD;
+# esta Application solo gestiona la configuracion (issuers), no el operador.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
+    targetRevision: main
+    path: components/cert-manager/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

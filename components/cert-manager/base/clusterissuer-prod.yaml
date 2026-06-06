@@ -1,0 +1,22 @@
+# Let's Encrypt PRODUCCION — certificados confiables, rate limit 50 certs/semana
+# por dominio registrado. El solver DNS-01 via Cloudflare permite wildcard
+# (*.calabri.net) y funciona con el proxy naranja encendido, sin abrir el :80.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: tuduribrian3@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - calabri.net

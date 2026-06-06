@@ -1,13 +1,12 @@
-# Traefik Ingress + cert-manager TLS
-# Reemplazar sonrisas.calabri.net con el dominio real antes del primer sync.
-# Requiere cert-manager + ClusterIssuer "letsencrypt-prod" en el cluster.
+# Traefik Ingress sirviendo TLS desde el cert wildcard *.calabri.net.
+# NO lleva anotacion cert-manager.io/cluster-issuer: el cert lo emite el
+# Certificate wildcard (certificate.yaml), no se emite uno por host.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: sonrisas-web
   annotations:
     argocd.argoproj.io/sync-wave: "2"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
@@ -15,7 +14,7 @@ spec:
   tls:
     - hosts:
         - sonrisas.calabri.net
-      secretName: sonrisas-tls
+      secretName: wildcard-calabri-tls
   rules:
     - host: sonrisas.calabri.net
       http:

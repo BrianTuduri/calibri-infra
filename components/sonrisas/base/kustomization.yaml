@@ -6,4 +6,5 @@ resources:
   - migrate-job.yaml
   - web.yaml
   - workers.yaml
+  - certificate.yaml
   - ingress.yaml

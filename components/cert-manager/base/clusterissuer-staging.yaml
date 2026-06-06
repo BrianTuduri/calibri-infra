@@ -1,0 +1,22 @@
+# Let's Encrypt STAGING — certificados NO confiables, sin rate limit estricto.
+# Usalo para validar que el reto DNS-01 (token Cloudflare + zona calabri.net)
+# funciona antes de tocar el issuer de produccion.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: tuduribrian3@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - calabri.net
