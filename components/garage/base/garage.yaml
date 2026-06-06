@@ -79,12 +79,14 @@ spec:
       containers:
         - name: garage
           image: dxflrs/garage:v1.0.1
-          command:
-            - sh
-            - -c
-            - |
-              export GARAGE_RPC_SECRET="$(cat /run/secrets/garage/RPC_SECRET)"
-              exec /garage -c /etc/garage/garage.toml server
+          command: ['/garage']
+          args: ['-c', '/etc/garage/garage.toml', 'server']
+          env:
+            - name: GARAGE_RPC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: garage-rpc-secret
+                  key: RPC_SECRET
           ports:
             - name: s3-api
               containerPort: 3900
