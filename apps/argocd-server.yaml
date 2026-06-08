@@ -1,0 +1,27 @@
+# Expone ArgoCD via Tailscale (VPN-only). Wave 0.
+# ArgoCD esta instalado manualmente (ver pasos-manuales.md); esta Application solo
+# gestiona el Ingress Tailscale que lo expone, no el operador.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-server-tailscale
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
+    targetRevision: main
+    path: components/argocd/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

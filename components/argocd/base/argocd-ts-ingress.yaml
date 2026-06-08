@@ -1,0 +1,29 @@
+# Tailscale Ingress — expone ArgoCD SOLO en la VPN con cert TLS valido.
+#
+# Mismo patron que Rancher: el Ingress Tailscale TERMINA TLS con cert Let's Encrypt
+# valido para argocd.<TAILNET>.ts.net y reenvia HTTP plano a argocd-server.
+#
+# argocd-server YA corre en modo insecure (server.insecure=true en argocd-values.yaml)
+# => sirve HTTP plano en :8080, sin cert self-signed. Equivale al tls=external de Rancher.
+#
+# REQUISITO: HTTPS Certificates habilitado en el tailnet (ya hecho para Rancher).
+#
+# El host "argocd" en tls.hosts se vuelve el nombre del device -> argocd.tailc13b86.ts.net.
+#
+# Nota CLI: la UI web funciona directo. Para `argocd login` por CLI usar --grpc-web
+# (el Ingress Tailscale proxea HTTP/gRPC-web, no gRPC nativo).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-tailscale
+  namespace: argocd
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - argocd
+  defaultBackend:
+    service:
+      name: argocd-server
+      port:
+        number: 80
