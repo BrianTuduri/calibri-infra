@@ -1,0 +1,43 @@
+# Rancher management UI — wave 0.
+# Acceso SOLO via Tailscale: https://rancher.<TAILNET>.ts.net
+# Reemplazar <TAILNET> con tu tailnet name (ej: "calibri" si el FQDN es calibri.ts.net).
+# ingress.enabled=false: Traefik NO expone Rancher. Solo el LoadBalancer Tailscale lo hace.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://releases.rancher.com/server-charts/stable
+    chart: rancher
+    targetRevision: 2.14.2
+    helm:
+      releaseName: rancher
+      values: |
+        hostname: rancher.tailc13b86.ts.net
+        replicas: 1
+        bootstrapPassword: admin
+        ingress:
+          enabled: false
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

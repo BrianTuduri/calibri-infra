@@ -1,0 +1,40 @@
+# Tailscale Kubernetes Operator — wave 0.
+# Expone servicios internos (Rancher, ArgoCD) SOLO via VPN. Nunca desde internet.
+#
+# ANTES DEL PRIMER SYNC (paso manual):
+#   1. Tailscale admin → Settings → OAuth clients → crear client con scope "k8s:operator"
+#   2. kubectl create namespace tailscale
+#   3. kubectl create secret -n tailscale generic operator-oauth \
+#        --from-literal=client_id=<ID> \
+#        --from-literal=client_secret=<SECRET>
+#
+# El operador lee el secret "operator-oauth" automaticamente. No hay credenciales en git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://pkgs.tailscale.com/helmcharts
+    chart: tailscale-operator
+    targetRevision: 1.72.0
+    helm:
+      releaseName: tailscale-operator
+      values: |
+        operatorConfig:
+          hostname: "cygnus-k3s-operator"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
