@@ -41,3 +41,31 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+---
+# LoadBalancer Tailscale que expone Rancher SOLO en la VPN.
+# Application separada del chart Helm: el chart no contiene este Service.
+# El operador Tailscale (apps/tailscale.yaml) lo convierte en peer del tailnet.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher-lb
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
+    targetRevision: main
+    path: components/rancher/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
