@@ -23,6 +23,10 @@ spec:
         hostname: rancher.tailc13b86.ts.net
         replicas: 1
         bootstrapPassword: admin
+        # tls: external → Rancher sirve HTTP plano en :80, sin cert self-signed.
+        # El Tailscale Ingress (components/rancher/base) termina TLS con cert
+        # Let's Encrypt valido *.ts.net. Sin esto el browser ve cert invalido.
+        tls: external
         ingress:
           enabled: false
         resources:

@@ -1,0 +1,28 @@
+# Tailscale Ingress — expone Rancher SOLO en la VPN con cert TLS valido.
+#
+# A diferencia de un Service LoadBalancer (proxy TCP que deja pasar el cert
+# self-signed de Rancher), el Ingress Tailscale TERMINA TLS en el proxy con un
+# cert Let's Encrypt valido para rancher.<TAILNET>.ts.net, y reenvia HTTP plano
+# a Rancher (que corre con tls=external en :80).
+#
+# REQUISITO: HTTPS Certificates habilitado en el tailnet:
+#   Tailscale admin -> DNS -> "HTTPS Certificates" -> Enable
+# Sin eso, el operador no puede emitir el cert y el Ingress queda sin direccion.
+#
+# El host "rancher" en tls.hosts se vuelve el nombre del device en el tailnet
+# -> rancher.tailc13b86.ts.net (coincide con hostname del chart).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rancher-tailscale
+  namespace: cattle-system
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - rancher
+  defaultBackend:
+    service:
+      name: rancher
+      port:
+        number: 80
