@@ -1,0 +1,110 @@
+# Rancher Monitoring Stack — Prometheus + Grafana + Alertmanager.
+# Wave 1 (CRDs) → Wave 2 (stack). Depende de rancher (wave 0).
+# Acceso a Grafana: Rancher UI → Monitoring → Grafana (proxeado por Rancher).
+# ServerSideApply=true requerido: los CRDs superan el limite de annotation size.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher-monitoring-crd
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.rancher.io
+    chart: rancher-monitoring-crd
+    targetRevision: "109.0.2+up80.9.1-rancher.8"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-monitoring-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.rancher.io
+    chart: rancher-monitoring
+    targetRevision: "109.0.2+up80.9.1-rancher.8"
+    helm:
+      releaseName: rancher-monitoring
+      values: |
+        prometheus:
+          prometheusSpec:
+            retention: 5d
+            resources:
+              requests:
+                cpu: 250m
+                memory: 512Mi
+              limits:
+                cpu: "1"
+                memory: 1Gi
+        grafana:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+        alertmanager:
+          alertmanagerSpec:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+        prometheusOperator:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
+        kube-state-metrics:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+        prometheus-node-exporter:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 30Mi
+            limits:
+              cpu: 200m
+              memory: 50Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-monitoring-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
