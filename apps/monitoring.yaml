@@ -57,6 +57,8 @@ spec:
               limits:
                 cpu: "1"
                 memory: 1Gi
+          serviceMonitor:
+            metricRelabelings: []
         grafana:
           additionalDataSources:
             - name: Loki
@@ -82,7 +84,11 @@ spec:
               limits:
                 cpu: 100m
                 memory: 128Mi
+          serviceMonitor:
+            metricRelabelings: []
         prometheusOperator:
+          serviceMonitor:
+            metricRelabelings: []
           resources:
             requests:
               cpu: 100m
@@ -90,6 +96,9 @@ spec:
             limits:
               cpu: 200m
               memory: 200Mi
+        kubeCoredns:
+          serviceMonitor:
+            metricRelabelings: []
         kube-state-metrics:
           resources:
             requests:
@@ -99,6 +108,9 @@ spec:
               cpu: 100m
               memory: 64Mi
         prometheus-node-exporter:
+          prometheus:
+            monitor:
+              metricRelabelings: []
           resources:
             requests:
               cpu: 50m
