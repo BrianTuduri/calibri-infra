@@ -1,0 +1,190 @@
+# Rancher Logging Stack — Fluent Bit + Fluentd + Loki.
+# Wave 1 (CRDs) → Wave 2 (operator + loki) → Wave 3 (ClusterOutput/ClusterFlow).
+# Depende de rancher-monitoring (Grafana debe estar up para el datasource).
+# Logs: todos los pods, retención 7 días, almacenamiento filesystem 20Gi.
+# rancher-logging: 109.0.0+up4.10.0-rancher.23 | loki chart: 6.55.0 (app 3.6.7)
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher-logging-crd
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.rancher.io
+    chart: rancher-logging-crd
+    targetRevision: "109.0.0+up4.10.0-rancher.23"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-logging-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: "6.55.0"
+    helm:
+      releaseName: loki
+      values: |
+        deploymentMode: SingleBinary
+
+        loki:
+          auth_enabled: false
+          commonConfig:
+            replication_factor: 1
+          storage:
+            type: filesystem
+          limits_config:
+            retention_period: 7d
+            ingestion_rate_mb: 8
+            ingestion_burst_size_mb: 16
+          compactor:
+            retention_enabled: true
+            delete_request_store: filesystem
+          schemaConfig:
+            configs:
+              - from: "2024-01-01"
+                store: tsdb
+                object_store: filesystem
+                schema: v13
+                index:
+                  prefix: index_
+                  period: 24h
+
+        singleBinary:
+          replicas: 1
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          persistence:
+            enabled: true
+            size: 20Gi
+
+        # Disable scalable-mode components (only use singleBinary)
+        read:
+          replicas: 0
+        write:
+          replicas: 0
+        backend:
+          replicas: 0
+
+        # Disable bundled extras (Grafana y Promtail van por rancher-monitoring y rancher-logging)
+        test:
+          enabled: false
+        lokiCanary:
+          enabled: false
+        chunksCache:
+          enabled: false
+        resultsCache:
+          enabled: false
+        gateway:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-logging-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher-logging
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.rancher.io
+    chart: rancher-logging
+    targetRevision: "109.0.0+up4.10.0-rancher.23"
+    helm:
+      releaseName: rancher-logging
+      values: |
+        # Fluent Bit: DaemonSet collector, muy liviano
+        fluentbit:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+            limits:
+              cpu: 200m
+              memory: 100Mi
+
+        # Fluentd: agregador central antes de enviar a Loki
+        fluentd:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-logging-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# Depende de que rancher-logging-crd esté instalado (CRDs de ClusterOutput/ClusterFlow)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logging-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
+    targetRevision: main
+    path: config/logging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-logging-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

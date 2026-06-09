@@ -1,0 +1,15 @@
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterFlow
+metadata:
+  name: all-logs
+  namespace: cattle-logging-system
+spec:
+  match:
+    - select: {}
+  filters:
+    - tag_normaliser: {}
+    - record_transformer:
+        records:
+          - cluster: calibri
+  globalOutputRefs:
+    - loki-output

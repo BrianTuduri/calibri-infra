@@ -1,0 +1,19 @@
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterOutput
+metadata:
+  name: loki-output
+  namespace: cattle-logging-system
+spec:
+  loki:
+    url: http://loki.cattle-logging-system.svc.cluster.local:3100
+    configure_kubernetes_labels: true
+    extra_labels:
+      cluster: calibri
+    buffer:
+      timekey: 1m
+      timekey_wait: 30s
+      timekey_use_utc: true
+      flush_mode: interval
+      flush_interval: 10s
+      chunk_limit_size: 8m
+      retry_max_times: 5
