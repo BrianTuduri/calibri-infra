@@ -29,6 +29,34 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# Tailscale Ingress + Service que exponen Grafana SOLO en la VPN.
+# Application separada del chart Helm (el chart no contiene estos manifests).
+# Acceso: https://grafana.<TAILNET>.ts.net (ej: grafana.tailc13b86.ts.net)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-lb
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BrianTuduri/calibri-infra.git
+    targetRevision: main
+    path: components/grafana/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-monitoring-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

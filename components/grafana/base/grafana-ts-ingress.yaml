@@ -1,0 +1,47 @@
+# Acceso a Grafana SOLO via Tailscale, mismo patron que Rancher/ArgoCD.
+#
+# El chart rancher-monitoring expone Grafana detras de un sidecar nginx (svc
+# rancher-monitoring-grafana :80 -> nginx :8080). Ese nginx reescribe appSubUrl
+# al path de proxy de Rancher (sub_filter), asi que sirve roto si se accede
+# fuera de la UI de Rancher.
+#
+# Por eso este Service apunta DIRECTO al container grafana (:3000), saltando el
+# nginx. Grafana en :3000 tiene appSubUrl vacio -> sirve bien en la raiz del
+# dominio Tailscale. Login normal con admin / (secret rancher-monitoring-grafana).
+#
+# El Tailscale Ingress TERMINA TLS con cert Let's Encrypt valido para
+# grafana.<TAILNET>.ts.net y reenvia HTTP plano a este Service.
+#
+# REQUISITO: HTTPS Certificates habilitado en el tailnet (ya hecho para Rancher).
+# El host "grafana" en tls.hosts se vuelve el nombre del device -> grafana.tailc13b86.ts.net.
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-tailscale
+  namespace: cattle-monitoring-system
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: rancher-monitoring
+    app.kubernetes.io/name: grafana
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-tailscale
+  namespace: cattle-monitoring-system
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - grafana
+  defaultBackend:
+    service:
+      name: grafana-tailscale
+      port:
+        number: 80
