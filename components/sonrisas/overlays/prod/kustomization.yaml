@@ -8,6 +8,6 @@ resources:
 # Requiere que el CI de sonrisasuy publique ghcr.io/.../sonrisas-{web,worker}:1.0.0
 images:
   - name: ghcr.io/calabri1/sonrisas-web
-    newTag: "v0.4.0"
+    newTag: "v0.4.1"
   - name: ghcr.io/calabri1/sonrisas-worker
-    newTag: "v0.4.0"
+    newTag: "v0.4.1"
