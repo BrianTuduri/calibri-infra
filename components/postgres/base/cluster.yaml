@@ -19,6 +19,20 @@ spec:
   primaryUpdateStrategy: unsupervised
 
   postgresql:
+    # Observabilidad de queries. Sin esto no hay registro de qué es lento en
+    # prod: el 2026-08-01 hubo que reconstruir a mano un diagnóstico de una
+    # query de 40 s (seq scan sobre pacientes con 19 GB de bloat) mirando
+    # tamaños de tabla y corriendo EXPLAIN uno por uno.
+    #
+    # OJO: cambiar esta lista exige REINICIAR Postgres, y el cluster tiene una
+    # sola instancia — el sync de Argo corta la base ~15-30 s.
+    #
+    # La extensión hay que crearla a mano una vez después del reinicio; el
+    # postInitSQL de abajo solo corre en un bootstrap desde cero:
+    #   psql -d sonrisas -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;'
+    shared_preload_libraries:
+      - pg_stat_statements
+
     parameters:
       # Tuned for backfill. Bajar shared_buffers→512MB, maintenance_work_mem→128MB,
       # max_connections→60 y resources a requests 500m/768Mi limits 1500m/2Gi
@@ -35,6 +49,13 @@ spec:
       default_statistics_target: "200"
       jit: "off"
       TimeZone: "America/Montevideo"
+      # Deja rastro de toda query que pase de 1 s. Los logs ya los recoge
+      # fluentd hacia Loki, así que quedan buscables. Es reloadable: no
+      # necesita reinicio por sí solo.
+      log_min_duration_statement: "1000"
+      # Reporta cuándo una query espera más de 1 s por un lock — la señal que
+      # faltó para dimensionar los VACUUM FULL del 2026-08-01.
+      log_lock_waits: "on"
 
   bootstrap:
     initdb:
@@ -42,6 +63,7 @@ spec:
       owner: sonrisas
       postInitSQL:
         - "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+        - "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
         - "ALTER ROLE sonrisas CREATEROLE;"
 
   superuserSecret:
