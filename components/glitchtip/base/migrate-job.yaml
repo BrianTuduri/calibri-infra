@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: glitchtip-migrate
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: glitchtip-migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 5000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: glitchtip/glitchtip:6.2.6
+          command: ["./bin/run-migrate.sh"]
+          envFrom:
+            - secretRef:
+                name: glitchtip-secrets
+          env:
+            # El ConfigMap no existe todavía en el primer sync: los hooks PreSync corren antes que el resto.
+            # Sin VALKEY_URL vacío no se crean las tablas de la cola en Postgres.
+            - name: VALKEY_URL
+              value: ""
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

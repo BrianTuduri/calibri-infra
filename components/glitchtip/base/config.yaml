@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: glitchtip-config
+data:
+  GLITCHTIP_DOMAIN: "https://glitchtip.tailc13b86.ts.net"
+  # Vacío = Postgres como cola y caché. El Redis de data es noeviction y lo comparten los workers de BullMQ.
+  VALKEY_URL: ""
+  ENABLE_USER_REGISTRATION: "false"
+  ENABLE_ORGANIZATION_CREATION: "false"
+  GLITCHTIP_ENABLE_UPTIME: "false"
+  GLITCHTIP_RETENTION_DAYS: "30"
+  SKIP_INIT: "true"

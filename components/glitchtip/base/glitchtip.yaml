@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: glitchtip-web
+spec:
+  selector:
+    app: glitchtip
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glitchtip
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: glitchtip
+  template:
+    metadata:
+      labels:
+        app: glitchtip
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 5000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: glitchtip
+          image: glitchtip/glitchtip:6.2.6
+          command: ["./bin/start.sh"]
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: glitchtip-secrets
+            - configMapRef:
+                name: glitchtip-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            httpGet:
+              path: /_health/
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /_health/
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /_health/
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
