@@ -69,6 +69,16 @@ spec:
   superuserSecret:
     name: pg-superuser
 
+  managed:
+    roles:
+      # Sin el Secret glitchtip-pg-role (basic-auth) el rol no se reconcilia y la base glitchtip no se crea.
+      - name: glitchtip
+        ensure: present
+        login: true
+        connectionLimit: 10
+        passwordSecret:
+          name: glitchtip-pg-role
+
   storage:
     # 50Gi para backfill de 3 años + crecimiento. CNPG no soporta shrink.
     size: 50Gi

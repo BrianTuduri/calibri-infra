@@ -3,3 +3,4 @@ kind: Kustomization
 namespace: sonrisas
 resources:
   - cluster.yaml
+  - glitchtip-database.yaml
