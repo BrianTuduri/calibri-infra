@@ -238,6 +238,112 @@ Cuando Garage esté operativo: descomentá el bloque `backup:` en
 
 ---
 
+## 7. GlitchTip (error tracking)
+
+GlitchTip corre en el ns `glitchtip` con Postgres como cola (sin Valkey) y su base
+`glitchtip` vive en el Cluster `sonrisas-pg`. Solo se accede por Tailscale:
+`https://glitchtip.tailc13b86.ts.net`.
+
+Agregar el rol y la base a CNPG **no reinicia Postgres** (no están entre los disparadores
+de rolling update de CNPG).
+
+> **Atención:** el kubeconfig de prod ya se pisó una vez con un login a OKD. Cada bloque
+> arranca con el chequeo de contexto: si no imprime `btuduri@cygnus-k3s`, pará.
+
+### 7a. Secrets (antes del push)
+
+El password se genera una vez y se reusa en los dos Secrets. Es hex, así que no
+necesita url-encode en el `DATABASE_URL`. Corré el bloque entero en la misma terminal.
+
+```bash
+export KUBECONFIG=~/.kube/k3s-hetzner-prod.kube
+kubectl config current-context   # debe ser btuduri@cygnus-k3s
+
+GT_PASS=$(openssl rand -hex 24)
+
+kubectl create secret generic glitchtip-pg-role \
+  -n sonrisas \
+  --type=kubernetes.io/basic-auth \
+  --from-literal=username=glitchtip \
+  --from-literal=password="$GT_PASS"
+kubectl label secret glitchtip-pg-role -n sonrisas cnpg.io/reload=true
+
+kubectl create namespace glitchtip
+kubectl create secret generic glitchtip-secrets \
+  -n glitchtip \
+  --from-literal=SECRET_KEY="$(openssl rand -hex 32)" \
+  --from-literal=DATABASE_URL="postgres://glitchtip:${GT_PASS}@sonrisas-pg-rw.sonrisas.svc:5432/glitchtip"
+
+unset GT_PASS
+```
+
+### 7b. Push y sync
+
+Pusheá en dos tandas. Si va todo junto, el Job de migraciones puede correr antes de que
+CNPG cree la base, falla, y Argo no reintenta la misma revisión.
+
+Primero solo el commit de `components/postgres`. Esperá a que la base exista:
+
+```bash
+export KUBECONFIG=~/.kube/k3s-hetzner-prod.kube
+kubectl config current-context   # debe ser btuduri@cygnus-k3s
+
+kubectl -n sonrisas get database glitchtip   # APPLIED tiene que estar en true
+kubectl -n sonrisas exec sonrisas-pg-1 -c postgres -- psql -U postgres -c '\l' | rg glitchtip
+```
+
+Después pusheá el resto. Argo sincroniza `glitchtip`: primero el Job, después el Deployment.
+
+```bash
+kubectl -n glitchtip get job,pod
+kubectl -n glitchtip logs job/glitchtip-migrate
+```
+
+Esperado: Job `Complete`, pod `1/1 Running` y la UI respondiendo en
+`https://glitchtip.tailc13b86.ts.net`. Si el log del pod muestra `too many connections for
+role "glitchtip"`, subí `connectionLimit` en `cluster.yaml`.
+
+### 7c. Alta inicial
+
+```bash
+export KUBECONFIG=~/.kube/k3s-hetzner-prod.kube
+kubectl config current-context   # debe ser btuduri@cygnus-k3s
+
+kubectl -n glitchtip exec -it deploy/glitchtip -- ./manage.py createsuperuser
+```
+
+En la UI creá la organización `calabri` y los proyectos `sonrisas-web` y
+`sonrisas-workers`. Anotá la public key y el project id de cada uno: están en el DSN
+que muestra la UI (`https://<public_key>@glitchtip.tailc13b86.ts.net/<project_id>`).
+
+### 7d. DSN para la app
+
+> **Atención:** la UI muestra el DSN con el host de Tailscale. Los pods no resuelven
+> `*.ts.net` y el SDK falla en silencio. Armá el DSN con el host interno.
+
+```bash
+export KUBECONFIG=~/.kube/k3s-hetzner-prod.kube
+kubectl config current-context   # debe ser btuduri@cygnus-k3s
+
+WEB_DSN="http://<PUBLIC_KEY_WEB>@glitchtip-web.glitchtip.svc.cluster.local:8000/<PROJECT_ID_WEB>"
+WORKERS_DSN="http://<PUBLIC_KEY_WORKERS>@glitchtip-web.glitchtip.svc.cluster.local:8000/<PROJECT_ID_WORKERS>"
+
+kubectl -n sonrisas patch secret app-secrets --type merge \
+  -p "{\"stringData\":{\"SENTRY_DSN\":\"$WEB_DSN\",\"SENTRY_DSN_WORKERS\":\"$WORKERS_DSN\"}}"
+
+kubectl -n sonrisas rollout restart deploy/sonrisas-web deploy/sonrisas-sync-worker \
+  deploy/sonrisas-alert-worker deploy/sonrisas-report-worker
+```
+
+### NetworkPolicy
+
+Si entra la NetworkPolicy default-deny de "Seguridad pendiente", tiene que permitir
+`sonrisas` → `glitchtip` (puerto 8000: DSN de los workers y tunnel de la web) y
+`glitchtip` → `sonrisas-pg` (5432). Sin lo primero los eventos se pierden en silencio;
+sin lo segundo GlitchTip no arranca.
+
+---
+
 ## Dominio del Ingress
 
 Editá `components/sonrisas/base/ingress.yaml` y reemplazá `sonrisas.calabri.net` por el
