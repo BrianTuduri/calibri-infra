@@ -13,3 +13,4 @@ data:
   S3_ENDPOINT_URL: "http://garage.data.svc.cluster.local:3900"
   S3_REGION: "garage"
   REDIS_HOST: "redis.data.svc.cluster.local"
+  SENTRY_ENVIRONMENT: "production"

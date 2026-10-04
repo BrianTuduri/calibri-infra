@@ -127,6 +127,11 @@ spec:
           env:
             - name: PG_POOL_MAX
               value: "4"
+            - name: SENTRY_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-sync-config
+                  key: SENTRY_ENVIRONMENT
           lifecycle:
             preStop:
               exec:
@@ -202,6 +207,11 @@ spec:
           env:
             - name: PG_POOL_MAX
               value: "5"
+            - name: SENTRY_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-sync-config
+                  key: SENTRY_ENVIRONMENT
             - name: UV_THREADPOOL_SIZE
               value: "8"
             - name: NODE_OPTIONS
