@@ -42,6 +42,10 @@ spec:
                 name: glitchtip-secrets
             - configMapRef:
                 name: glitchtip-config
+          env:
+            # start.sh arranca solo la web por default: los eventos se aceptan con 200 y quedan sin procesar en db_queuedtask.
+            - name: SERVER_ROLE
+              value: all_in_one
           resources:
             requests:
               cpu: 100m
