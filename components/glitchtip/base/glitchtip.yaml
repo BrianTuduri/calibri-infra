@@ -46,6 +46,9 @@ spec:
             # start.sh arranca solo la web por default: los eventos se aceptan con 200 y quedan sin procesar en db_queuedtask.
             - name: SERVER_ROLE
               value: all_in_one
+            # Va acá y no en el ConfigMap: un cambio en envFrom no reinicia el pod, uno en env sí.
+            - name: GLITCHTIP_ENABLE_UPTIME
+              value: "true"
           resources:
             requests:
               cpu: 100m
