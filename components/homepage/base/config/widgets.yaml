@@ -1,0 +1,10 @@
+---
+- greeting:
+    text_size: md
+    text: Escribí fuera de la barra para buscar un link
+
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: medium

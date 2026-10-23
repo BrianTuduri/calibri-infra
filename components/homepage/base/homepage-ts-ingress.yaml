@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage-tailscale
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - homepage
+  defaultBackend:
+    service:
+      name: homepage
+      port:
+        number: 80

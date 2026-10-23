@@ -1,0 +1,72 @@
+# siteMonitor usa DNS del cluster: los pods no resuelven *.ts.net y el chequeo daría caído siempre.
+- Sonrisas prod:
+    - Sonrisas:
+        href: https://sonrisas.calabri.net
+        siteMonitor: http://sonrisas-web.sonrisas.svc:3000
+        icon: mdi-tooth
+        description: App prod (k3s Hetzner)
+    - GlitchTip:
+        href: https://glitchtip.tailc13b86.ts.net
+        siteMonitor: http://glitchtip-tailscale.glitchtip.svc
+        icon: glitchtip
+        description: Errores de web y workers
+
+- Cluster k3s:
+    - Argo CD:
+        href: https://argocd.tailc13b86.ts.net
+        siteMonitor: http://argocd-server.argocd.svc
+        icon: argo-cd
+        description: GitOps de calibri-infra
+    - Rancher:
+        href: https://rancher.tailc13b86.ts.net
+        siteMonitor: http://rancher.cattle-system.svc
+        icon: rancher
+        description: Gestión del cluster
+    - Grafana:
+        href: https://grafana.tailc13b86.ts.net
+        siteMonitor: http://grafana-tailscale.cattle-monitoring-system.svc
+        icon: grafana
+        description: Métricas y logs (Loki)
+
+- Sonrisas staging:
+    - Sonrisas staging:
+        href: https://sonrisas.apps.okd.tuduri.com.uy
+        siteMonitor: https://sonrisas.apps.okd.tuduri.com.uy/api/health
+        icon: mdi-tooth-outline
+        description: App staging (OKD homelab)
+
+- OKD:
+    - Consola OKD:
+        href: https://console-openshift-console.apps.okd.tuduri.com.uy
+        icon: openshift
+        description: Consola web de OKD
+    - Argo CD OKD:
+        href: https://openshift-gitops-server-openshift-gitops.apps.okd.tuduri.com.uy
+        icon: argo-cd
+        description: GitOps de staging (rama dev)
+
+- Repos y cuentas:
+    - sonrisasuy:
+        href: https://github.com/calabri1/sonrisasuy
+        icon: github
+        description: Código de la app
+    - sonrisasuy Actions:
+        href: https://github.com/calabri1/sonrisasuy/actions
+        icon: github
+        description: CI, builds y releases
+    - calibri-infra:
+        href: https://github.com/BrianTuduri/calibri-infra
+        icon: github
+        description: Infra de prod
+    - Tailscale:
+        href: https://login.tailscale.com/admin/machines
+        icon: tailscale
+        description: Admin del tailnet
+    - Hetzner:
+        href: https://console.hetzner.cloud
+        icon: hetzner
+        description: Servidor de prod
+    - Cloudflare:
+        href: https://dash.cloudflare.com
+        icon: cloudflare
+        description: DNS de calabri.net

@@ -1,0 +1,39 @@
+---
+title: Calibri
+language: es
+
+theme: dark
+color: slate
+headerStyle: clean
+statusStyle: dot
+useEqualHeights: true
+target: _blank
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+  hideVisitURL: true
+
+hideVersion: true
+
+# Un grupo de services.yaml sin entrada acá aparece en todos los tabs.
+layout:
+  Sonrisas prod:
+    tab: Prod
+    style: row
+    columns: 4
+  Cluster k3s:
+    tab: Prod
+    style: row
+    columns: 4
+  Sonrisas staging:
+    tab: Dev
+    style: row
+    columns: 4
+  OKD:
+    tab: Dev
+    style: row
+    columns: 4
+  Repos y cuentas:
+    style: row
+    columns: 4
