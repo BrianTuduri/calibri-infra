@@ -52,7 +52,7 @@ spec:
             - name: PG_POOL_MAX
               value: "10"
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=768"
+              value: "--max-old-space-size=1536"
           lifecycle:
             preStop:
               exec:
@@ -63,7 +63,7 @@ spec:
               memory: 512Mi
             limits:
               cpu: "1500m"
-              memory: 1024Mi
+              memory: 2048Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
