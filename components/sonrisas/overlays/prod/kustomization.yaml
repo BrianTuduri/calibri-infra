@@ -11,3 +11,13 @@ images:
     newTag: "v0.14.0"
   - name: ghcr.io/calabri1/sonrisas-worker
     newTag: "v0.14.0"
+patches:
+  - target:
+      kind: Deployment
+      name: sonrisas-web
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: APP_RELEASE_TAG
+          value: "v0.14.0"
