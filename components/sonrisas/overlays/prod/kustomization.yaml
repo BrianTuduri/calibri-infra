@@ -8,9 +8,9 @@ resources:
 # Requiere que el CI de sonrisasuy publique ghcr.io/.../sonrisas-{web,worker}:1.0.0
 images:
   - name: ghcr.io/calabri1/sonrisas-web
-    newTag: "v0.17.1"
+    newTag: "v0.18.0"
   - name: ghcr.io/calabri1/sonrisas-worker
-    newTag: "v0.17.1"
+    newTag: "v0.18.0"
 patches:
   - target:
       kind: Deployment
@@ -20,4 +20,4 @@ patches:
         path: /spec/template/spec/containers/0/env/-
         value:
           name: APP_RELEASE_TAG
-          value: "v0.17.1"
+          value: "v0.18.0"
