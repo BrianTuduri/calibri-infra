@@ -344,6 +344,109 @@ sin lo segundo GlitchTip no arranca.
 
 ---
 
+## 8. Landing (calabri.net)
+
+La web pública corre en el ns `landing`: un Deployment Node (Astro standalone, puerto 4321)
+detrás de Traefik, con su propio Certificate para `calabri.net` y `www.calabri.net`. `www`
+redirige al apex con el Middleware `www-to-apex`. El código vive en `calabri1/calabri-web`;
+acá solo el deploy.
+
+> **Atención:** no pushees `apps/landing.yaml` a `main` antes de que exista la imagen que
+> fija el overlay (`newTag`). Argo sincroniza solo y los pods quedan en `ImagePullBackOff`.
+
+### 8a. Primera imagen
+
+En `calabri-web`, taggeá la versión que fija el overlay:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+El workflow `Release` publica `ghcr.io/calabri1/calabri-web:v0.1.1`. Verificá en
+GitHub → Packages que exista y que el usuario del PAT de `ghcr-pull` pueda leerlo.
+
+> **Atención:** no deployes `v0.1.0`. Usa Astro 5, y un header `Host` con puerto inválido
+> tira el proceso Node (GHSA-qh8j-hqjv-7m4x). Desde `v0.1.1` el sitio corre en Astro 7.
+
+### 8b. Secrets (antes del push)
+
+```bash
+export KUBECONFIG=~/.kube/k3s-hetzner-prod.kube
+kubectl config current-context   # debe ser btuduri@cygnus-k3s
+
+kubectl create namespace landing
+
+kubectl get secret ghcr-pull -n sonrisas -o json \
+  | jq 'del(.metadata.namespace,.metadata.uid,.metadata.resourceVersion,.metadata.creationTimestamp,.metadata.managedFields)' \
+  | kubectl apply -n landing -f -
+```
+
+El Secret del formulario es `landing-secrets`, con las variables que lee `/api/contact`. El
+Deployment lo marca `optional`: la página levanta sin él, así que un Secret faltante o mal
+cargado recién aparece cuando alguien manda el formulario. Probalo después del deploy (8d).
+
+El envío sale por Amazon SES con el usuario IAM `ses-smtp-web`. Sin `CONTACT_FROM`, cada envío
+sale con remitente vacío y SES lo rechaza.
+
+```bash
+kubectl create secret generic landing-secrets \
+  -n landing \
+  --from-literal=SMTP_HOST=email-smtp.eu-central-1.amazonaws.com \
+  --from-literal=SMTP_PORT=587 \
+  --from-literal=SMTP_USER='<usuario SMTP de ses-smtp-web>' \
+  --from-literal=SMTP_PASS='<password SMTP de ses-smtp-web>' \
+  --from-literal=CONTACT_FROM=web@notify.calabri.net \
+  --from-literal=CONTACT_TO=contacto@calabri.net \
+  --from-literal=TURNSTILE_SECRET_KEY='<secret key de Turnstile>'
+```
+
+SES está en `eu-central-1`; credenciales SMTP de otra región fallan con `535`. Detalle y
+troubleshooting en `calabri-web/docs/formulario-contacto.md`.
+
+En Cloudflare → Turnstile, el widget tiene que tener `calabri.net` en su lista de hostnames.
+Si no, el widget muestra el error `110200` y nadie puede mandar el formulario.
+
+La site key de Turnstile no va en este Secret: el formulario se prerenderiza y la clave se
+fija al construir la imagen. Cargala como variable del repo `calabri-web` (Settings →
+Secrets and variables → Actions → Variables) con el nombre `PUBLIC_TURNSTILE_SITE_KEY`.
+Sin ella el workflow `Release` falla a propósito, para no publicar la clave de prueba.
+
+### 8c. DNS en Cloudflare
+
+Creá `calabri.net` (apex) y `www` con el mismo destino que `sonrisas.calabri.net`, ambos
+con proxy activado. Antes, fijate que el apex no tenga ya otro registro: no lo verifiqué.
+
+### 8d. Push y verificación
+
+Pusheá `apps/landing.yaml` y `components/landing/`. Argo emite primero el Certificate
+(wave 1) y después levanta el resto.
+
+```bash
+export KUBECONFIG=~/.kube/k3s-hetzner-prod.kube
+kubectl config current-context   # debe ser btuduri@cygnus-k3s
+
+kubectl -n landing get certificate,pod,ingress   # Certificate READY True, pods 1/1
+curl -sI https://calabri.net | head -1           # HTTP/2 200
+curl -sI https://www.calabri.net | rg -i '^(HTTP|location)'   # 301 a https://calabri.net/
+```
+
+Mandá el formulario desde `https://calabri.net` y confirmá que llega a `contacto@calabri.net`.
+
+Si el Certificate queda en `False`, mirá `kubectl -n landing describe certificaterequest`:
+el DNS-01 necesita el mismo token de Cloudflare que usa el wildcard.
+
+> **Atención:** el límite de envíos por IP confía en el header `cf-connecting-ip`. Si el
+> nodo acepta tráfico 443 que no venga de Cloudflare, cualquiera lo falsifica y se saltea
+> el límite. Cerrá el puerto en el firewall de Hetzner a los rangos de Cloudflare.
+
+### 8e. Nuevas versiones
+
+Taggeá `vX.Y.Z` en `calabri-web`, esperá el workflow `Release` y subí `newTag` en
+`components/landing/overlays/prod/kustomization.yaml`.
+
+---
+
 ## Dominio del Ingress
 
 Editá `components/sonrisas/base/ingress.yaml` y reemplazá `sonrisas.calabri.net` por el

@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: landing-web
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # <namespace>-<name>@kubernetescrd: renaming the namespace or the Middleware silently drops the www redirect.
+    traefik.ingress.kubernetes.io/router.middlewares: landing-www-to-apex@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - calabri.net
+        - www.calabri.net
+      secretName: landing-tls
+  rules:
+    - host: calabri.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: landing-web
+                port:
+                  name: http
+    - host: www.calabri.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: landing-web
+                port:
+                  name: http
