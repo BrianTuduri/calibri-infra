@@ -351,21 +351,23 @@ detrás de Traefik, con su propio Certificate para `calabri.net` y `www.calabri.
 redirige al apex con el Middleware `www-to-apex`. El código vive en `calabri1/calabri-web`;
 acá solo el deploy.
 
-> **Atención:** no pushees `apps/landing.yaml` a `main` antes de que exista la imagen
-> `v0.1.0`. Argo sincroniza solo y los pods quedan en `ImagePullBackOff`.
+> **Atención:** no pushees `apps/landing.yaml` a `main` antes de que exista la imagen que
+> fija el overlay (`newTag`). Argo sincroniza solo y los pods quedan en `ImagePullBackOff`.
 
 ### 8a. Primera imagen
 
-En `calabri-web`, con el endpoint del formulario ya mergeado (la imagen arranca
-`dist/server/entry.mjs`, que sin el adapter Node no existe):
+En `calabri-web`, taggeá la versión que fija el overlay:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
-El workflow `Release` publica `ghcr.io/calabri1/calabri-web:v0.1.0`. Verificá en
+El workflow `Release` publica `ghcr.io/calabri1/calabri-web:v0.1.1`. Verificá en
 GitHub → Packages que exista y que el usuario del PAT de `ghcr-pull` pueda leerlo.
+
+> **Atención:** no deployes `v0.1.0`. Usa Astro 5, y un header `Host` con puerto inválido
+> tira el proceso Node (GHSA-qh8j-hqjv-7m4x). Desde `v0.1.1` el sitio corre en Astro 7.
 
 ### 8b. Secrets (antes del push)
 
@@ -390,7 +392,7 @@ sale con remitente vacío y SES lo rechaza.
 ```bash
 kubectl create secret generic landing-secrets \
   -n landing \
-  --from-literal=SMTP_HOST=email-smtp.us-east-1.amazonaws.com \
+  --from-literal=SMTP_HOST=email-smtp.eu-central-1.amazonaws.com \
   --from-literal=SMTP_PORT=587 \
   --from-literal=SMTP_USER='<usuario SMTP de ses-smtp-web>' \
   --from-literal=SMTP_PASS='<password SMTP de ses-smtp-web>' \
@@ -399,7 +401,11 @@ kubectl create secret generic landing-secrets \
   --from-literal=TURNSTILE_SECRET_KEY='<secret key de Turnstile>'
 ```
 
-[VERIFICAR: la región de SES; el host es `email-smtp.<región>.amazonaws.com`.]
+SES está en `eu-central-1`; credenciales SMTP de otra región fallan con `535`. Detalle y
+troubleshooting en `calabri-web/docs/formulario-contacto.md`.
+
+En Cloudflare → Turnstile, el widget tiene que tener `calabri.net` en su lista de hostnames.
+Si no, el widget muestra el error `110200` y nadie puede mandar el formulario.
 
 La site key de Turnstile no va en este Secret: el formulario se prerenderiza y la clave se
 fija al construir la imagen. Cargala como variable del repo `calabri-web` (Settings →

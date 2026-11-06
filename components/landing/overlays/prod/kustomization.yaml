@@ -7,4 +7,4 @@ resources:
 # Requires the calabri-web Release workflow to have published ghcr.io/calabri1/calabri-web with this tag.
 images:
   - name: ghcr.io/calabri1/calabri-web
-    newTag: "v0.1.0"
+    newTag: "v0.1.1"
