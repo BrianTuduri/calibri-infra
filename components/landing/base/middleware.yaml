@@ -1,0 +1,11 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: www-to-apex
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  redirectRegex:
+    regex: ^https?://www\.calabri\.net/(.*)
+    replacement: https://calabri.net/${1}
+    permanent: true
